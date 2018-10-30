@@ -31,23 +31,28 @@ Inherits ConsoleApplication
 		    Print "  -f, --fix (default)        finds symbolic link files & sets system attribute"
 		    Print "  -u, --unset                finds symbolic links & unsets system attribute"
 		    Print "  -q, --quiet                quiet (no output)"
+		    Print "  -v, --verbose            print each analyzed path and file"
 		    Print ""
 		    Quit
 		  End If
 		  
+		  Dim bVerbose As Boolean = False
 		  Dim bQuiet As Boolean = False
 		  Dim bFix As Boolean = True
 		  Dim sPath As String = ".\"
 		  For i As Integer = 0 to UBound(args)
 		    args(i) = args(i).ReplaceAll("--quiet", "-q")_
 		    .ReplaceAll("--fix", "-f")_
-		    .ReplaceAll("--unset", "-u")
+		    .ReplaceAll("--unset", "-u")_
+		    .ReplaceAll("--verbose", "-v")
 		    
 		    Select Case args(i)
 		    Case "-q"
 		      bQuiet = True
 		    Case "-u"
 		      bFix = False
+		    Case "-v"
+		      bVerbose = True
 		    Else
 		      If Left(args(i), 1) <> "-" And i <> 0 Then
 		        sPath = args(i)
@@ -67,8 +72,8 @@ Inherits ConsoleApplication
 		    Dim cmd As String
 		    Dim LF As String = Chr(13) + Chr(10)
 		    cmd = "cd " + Chr(34) + sPath + Chr(34) + LF
-		    cmd = cmd + "dir /B /S" + LF
-		    Dim result As String = ShellCommand(cmd).DelLeftMost("dir /B /S").Trim + LF
+		    cmd = cmd + "dir /B /S /A" + LF
+		    Dim result As String = ShellCommand(cmd).DelLeftMost("dir /B /S /A").Trim + LF
 		    cmd = ""
 		    
 		    While result.InStrB(LF) > 0
@@ -76,6 +81,9 @@ Inherits ConsoleApplication
 		      result = result.DelLeftMost(LF)
 		      
 		      // Check if file is symbolic link
+		      If bVerbose Then
+		        Print "Checking " + file
+		      End If
 		      fi = New FolderItem(file, FolderItem.PathTypeNative)
 		      If Not fi.Directory And fi.Length < 300 Then // Optimize, files are less than 300 bytes
 		        Dim tis As TextInputStream
@@ -98,7 +106,6 @@ Inherits ConsoleApplication
 		  Catch e As RuntimeException
 		    Print e.Message
 		  End Try
-		  
 		  
 		End Function
 	#tag EndEvent
@@ -134,6 +141,7 @@ Inherits ConsoleApplication
 		  tos.Close
 		  Dim sh As New Shell
 		  sh.Mode = 0
+		  sh.TimeOut = 1000 * 60 // 1 minute
 		  sh.Execute fi.NativePath
 		  Dim r As String = sh.Result
 		  sh.Close
